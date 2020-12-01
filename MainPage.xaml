@@ -1,0 +1,103 @@
+﻿<Page
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="400"
+    d:DesignWidth="800"
+    
+    xmlns:Maps="using:Windows.UI.Xaml.Controls.Maps"    
+    xmlns:local="using:TrippitKiosk" xmlns:apimodels="using:TrippitKiosk.Models.ApiModels" xmlns:models="using:TrippitKiosk.Models"
+    x:Class="TrippitKiosk.MainPage"
+    
+    
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"    
+    Loaded="Page_Loaded">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="600"/>
+            <ColumnDefinition Width="200"/>
+        </Grid.ColumnDefinitions>
+        
+        <!--Map Column-->
+        <Maps:MapControl x:Name="MainMapControl"
+                         TiltInteractionMode="Disabled"
+                         PanInteractionMode="Disabled"
+                         ZoomInteractionMode="Disabled"
+                         RotateInteractionMode="Disabled"
+                         TransitFeaturesVisible="False"
+                         ZoomLevel="16.11"
+                         Width="600"/>
+        
+        <!--Control column-->
+        <Grid Grid.Column="1" Padding="5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <!--Header-->
+            <TextBlock x:Name="StopDetailsTitle"
+                       Text="Stop Details"
+                       Style="{ThemeResource TitleTextBlockStyle}"/>
+            <!--List-->
+            <ListView x:Name="StopDetailsListView">
+                <ListView.Header>
+                    <TextBlock x:Name="StopDetailsHeader" Text=""/>
+                </ListView.Header>
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="models:TransitStopTime">
+                        <Grid Padding="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="20*"/>
+                                <ColumnDefinition Width="40*"/>
+                                <ColumnDefinition Width="20*"/>
+                                <ColumnDefinition Width="20*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Grid.RowSpan="2" Text="{x:Bind ViaLineShortName}"/>
+                            <TextBlock Grid.Column="1" Grid.RowSpan="2" Text="{x:Bind StopHeadsign}"/>
+                            <TextBlock Grid.Column="2" Grid.RowSpan="2" Text="{x:Bind Ar}"
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <!--Footer-->
+            <TextBlock Grid.Row="2"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Center"
+                       Text="I am a clock"/>
+            <Button Grid.Row="2" 
+                    FontFamily="{StaticResource SymbolThemeFontFamily}"
+                    Content="&#xE115;"
+                    Padding="10, 5"
+                    Style="{ThemeResource AccentButtonStyle}"
+                    HorizontalAlignment="Right">
+                <Button.Flyout>
+                    <Flyout>
+                        <StackPanel>
+                            <Button x:Name="RelayoutMapButton"
+                                     Click="RelayoutMapButton_Click"
+                                     Content="Relayout Map"/>
+                            <Button x:Name="GoToSettingsButton"
+                                    Content="Settings page"/>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+
+        </Grid>
+
+    </Grid>
+</Page>
