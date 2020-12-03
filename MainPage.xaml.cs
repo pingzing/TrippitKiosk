@@ -5,7 +5,10 @@ using MQTTnet.Client.Options;
 using MQTTnet.Extensions.ManagedClient;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,6 +16,7 @@ using System.Xml.Linq;
 using TrippitKiosk.Extensions;
 using TrippitKiosk.Models;
 using TrippitKiosk.Services;
+using TrippitKiosk.Viewmodels;
 using Windows.Devices.Geolocation;
 using Windows.Foundation;
 using Windows.Storage;
@@ -23,7 +27,7 @@ using Windows.UI.Xaml.Controls.Maps;
 
 namespace TrippitKiosk
 {
-    public sealed partial class MainPage : Page
+    public sealed partial class MainPage : Page, INotifyPropertyChanged
     {
         private const string MqttEndpoint = "mqtt.hsl.fi";
 
@@ -40,6 +44,23 @@ namespace TrippitKiosk
         private double _youAreHereLon;
         private List<TransitStop>? _visibleStops;
         private Dictionary<int, MapVehicleIcon> _vehicleIcons = new Dictionary<int, MapVehicleIcon>();
+
+        private string _selectedStopName;
+        public string SelectedStopName
+        {
+            get => _selectedStopName;
+            set
+            {
+                if (_selectedStopName == value)
+                {
+                    return;
+                }
+                _selectedStopName = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        public ObservableCollection<TransitStopArrivalDepartureVM> SelectedStopDetails { get; } = new ObservableCollection<TransitStopArrivalDepartureVM>();
 
         public MainPage()
         {
@@ -83,7 +104,7 @@ namespace TrippitKiosk
         }
 
 
-        private void MainMapControl_MapElementClick(MapControl sender, MapElementClickEventArgs args)
+        private async void MainMapControl_MapElementClick(MapControl sender, MapElementClickEventArgs args)
         {
             foreach (var layer in sender.Layers)
             {
@@ -96,9 +117,28 @@ namespace TrippitKiosk
                 }
             }
 
-            foreach (var clickedElements in args.MapElements)
+            SelectedStopDetails.Clear();
+            MapElement? firstClicked = args.MapElements.First();
+            firstClicked.ZIndex = ClickedZIndex;
+            var clickedStop = _visibleStops.FirstOrDefault(x => x.Id == (Guid)firstClicked.Tag);
+            if (clickedStop == null)
             {
-                clickedElements.ZIndex = ClickedZIndex;
+                return;
+            }
+
+            SelectedStopName = clickedStop.NameAndCode.ToUpperInvariant();
+
+            var arrivalsAndDepartures = await _hslApiService.GetUpcomingStopArrivalsAndDepartures(clickedStop.GtfsId, CancellationToken.None);
+            if (arrivalsAndDepartures == null)
+            {
+                return;
+            }
+
+            foreach (var detailVM in arrivalsAndDepartures
+                .Select(x => new TransitStopArrivalDepartureVM(x))
+                .OrderBy(x => x.BackingData.RealtimeArrival))
+            {
+                SelectedStopDetails.Add(detailVM);
             }
         }
 
@@ -171,6 +211,7 @@ namespace TrippitKiosk
                     Location = new Geopoint(x.Coords),
                     Title = x.NameAndCode,
                     ZIndex = 0,
+                    Tag = x.Id,
                 };
             }));
 
@@ -221,6 +262,12 @@ namespace TrippitKiosk
             await Task.Delay(1000);
             MainMapControl.Width = 600;
             MainMapControl.ZoomLevel = 16.10;
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void RaisePropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

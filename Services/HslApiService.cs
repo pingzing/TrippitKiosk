@@ -217,6 +217,49 @@ namespace TrippitKiosk.Services
             }).ToList();
         }
 
+        /// <summary>
+        /// Gets the next 10 arrivals and departures for the given stop, starting at the current time.
+        /// </summary>
+        public async Task<List<TransitStopArrivalDeparture>?> GetUpcomingStopArrivalsAndDepartures(string stopId, CancellationToken token)
+        {
+            GqlQuery query = new GqlQuery(ApiGqlMembers.stop)
+                .WithParameters(
+                    new GqlParameter(ApiGqlMembers.id, stopId)
+                )
+                .WithReturnValues(
+                    new GqlReturnValue(ApiGqlMembers.gtfsId),
+                    new GqlReturnValue(ApiGqlMembers.name),
+                    new GqlInlineMethodReturnValue(ApiGqlMembers.stoptimesWithoutPatterns, new List<GqlParameter> { new GqlParameter(ApiGqlMembers.numberOfDepartures, 10) },
+                        new GqlReturnValue(ApiGqlMembers.trip,
+                            new GqlReturnValue(ApiGqlMembers.route,
+                                new GqlReturnValue(ApiGqlMembers.gtfsId),
+                                new GqlReturnValue(ApiGqlMembers.shortName),
+                                new GqlReturnValue(ApiGqlMembers.longName)
+                            )
+                        ),
+                        new GqlReturnValue(ApiGqlMembers.realtimeState),
+                        new GqlReturnValue(ApiGqlMembers.arrivalDelay),
+                        new GqlReturnValue(ApiGqlMembers.scheduledArrival),
+                        new GqlReturnValue(ApiGqlMembers.scheduledDeparture),
+                        new GqlReturnValue(ApiGqlMembers.realtimeArrival),
+                        new GqlReturnValue(ApiGqlMembers.realtimeDeparture),
+                        new GqlReturnValue(ApiGqlMembers.realtime),
+                        new GqlReturnValue(ApiGqlMembers.serviceDay),
+                        new GqlReturnValue(ApiGqlMembers.headsign)
+                    )
+                );
+
+            ApiStopResponse? response = await GetGraphQL<ApiStopResponse>(query, token);
+            if (response == null)
+            {
+                return null;
+            }
+
+            return response?.Stop?.StoptimesWithoutPatterns
+                .Select(x => new TransitStopArrivalDeparture(x))
+                .ToList();
+        }
+
         public async Task<TransitStopDetails?> GetStopDetails(string stopId, DateTime forDate, CancellationToken token)
         {
             GqlQuery query = new GqlQuery(ApiGqlMembers.stop)
@@ -242,7 +285,7 @@ namespace TrippitKiosk.Services
                             new GqlReturnValue(ApiGqlMembers.realtimeArrival),
                             new GqlReturnValue(ApiGqlMembers.realtimeDeparture),
                             new GqlReturnValue(ApiGqlMembers.realtime),
-                            new GqlReturnValue(ApiGqlMembers.stopHeadsign)
+                            new GqlReturnValue(ApiGqlMembers.headsign)
                         )
                     )
                 );

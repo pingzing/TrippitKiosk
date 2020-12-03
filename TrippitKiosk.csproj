@@ -179,6 +179,7 @@
     <Compile Include="Models\TransitLine.cs" />
     <Compile Include="Models\TransitLineWithoutStops.cs" />
     <Compile Include="Models\TransitStop.cs" />
+    <Compile Include="Models\TransitStopArrivalDeparture.cs" />
     <Compile Include="Models\TransitStopDetails.cs" />
     <Compile Include="Models\TransitStopTime.cs" />
     <Compile Include="Models\TrippitKioskOptions.cs" />
@@ -187,6 +188,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\HslApiService.cs" />
     <Compile Include="Services\HslMqttService.cs" />
+    <Compile Include="Viewmodels\TransitStopArrivalDepartureVM.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">

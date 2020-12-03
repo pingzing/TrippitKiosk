@@ -83,9 +83,13 @@
         public static string realtimeArrival => nameof(realtimeArrival);
         public static string realtimeDeparture => nameof(realtimeDeparture);
         public static string stopHeadsign => nameof(stopHeadsign);
+        public static string headsign => nameof(headsign);
         public static string ids => nameof(ids);
         public static string walkSpeed => nameof(walkSpeed);
         public static string walkReluctance => nameof(walkReluctance);
         public static string alerts => nameof(alerts);
+        public static string trip => nameof(trip);
+        public static string arrivalDelay => nameof(arrivalDelay);
+        public static string serviceDay => nameof(serviceDay);
     }
 }

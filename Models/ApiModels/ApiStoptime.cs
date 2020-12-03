@@ -45,7 +45,7 @@ namespace TrippitKiosk.Models.ApiModels
         public long? ServiceDay { get; set; }
         [JsonPropertyName("trip")]
         public ApiTrip Trip { get; set; }
-        [JsonPropertyName("stopHeadsign")]
-        public string StopHeadsign { get; set; }
+        [JsonPropertyName("headsign")]
+        public string Headsign { get; set; }
     }
 }

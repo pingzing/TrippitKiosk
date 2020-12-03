@@ -29,7 +29,7 @@ namespace TrippitKiosk.Models
         /// <summary>
         /// The human-friendly string that typically shows up in a tram or bus's sign for a given stop.
         /// </summary>
-        public string StopHeadsign { get; set; }
+        public string Headsign { get; set; }
         public ApiMode ViaMode { get; set; }
         public string ViaLineShortName { get; set; }
         public string ViaLineLongName { get; set; }

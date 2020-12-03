@@ -39,7 +39,7 @@ namespace TrippitKiosk.Models
 
             Stoptimes = stop.StoptimesForServiceDate.SelectMany(
                 x => x.Stoptimes
-                .Where(z => !String.IsNullOrWhiteSpace(z.StopHeadsign))
+                .Where(z => !String.IsNullOrWhiteSpace(z.Headsign))
                 .Select(y => new TransitStopTime
                 {
                     IsRealtime = y.Realtime.Value,
@@ -47,7 +47,7 @@ namespace TrippitKiosk.Models
                     RealtimeDeparture = (uint)y.RealtimeDeparture.Value,
                     ScheduledArrival = (uint)y.ScheduledArrival.Value,
                     ScheduledDeparture = (uint)y.ScheduledDeparture.Value,
-                    StopHeadsign = y.StopHeadsign,
+                    Headsign = y.Headsign,
                     ViaLineShortName = x.Pattern.Route.ShortName,
                     ViaLineLongName = x.Pattern.Route.LongName,
                     ViaMode = x.Pattern.Route.Mode
