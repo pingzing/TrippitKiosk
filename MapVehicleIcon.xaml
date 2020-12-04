@@ -36,17 +36,19 @@
             Fill="White" 
             Stroke="Blue" 
             StrokeThickness="2"/>
-        <TextBlock x:Name="RouteTextBlock"
-                   Canvas.Left="8.5"
-                   Canvas.Top="9"
-                   Text="888" 
-                   TextAlignment="Center"
-                   FontSize="11"
-                   FontWeight="SemiBold"
-                   MaxLines="1"
-                   MaxWidth="25"
-                   Foreground="Black"
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Center"/>
+
+            <TextBlock x:Name="RouteTextBlock"
+                       Canvas.Left="8"
+                       Canvas.Top="9"
+                       Width="20"
+                       Text="888" 
+                       TextAlignment="Center"
+                       FontSize="11"
+                       FontWeight="SemiBold"
+                       MaxLines="1"                       
+                       Foreground="Black"
+                       HorizontalAlignment="Stretch" 
+                       VerticalAlignment="Center"/>
+    
     </Canvas>
 </UserControl>

@@ -16,6 +16,11 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"    
     Loaded="Page_Loaded">
 
+    <Page.Resources>
+        <SolidColorBrush x:Name="ClockDefaultBrush" Color="{ThemeResource SystemBaseHighColor}"/>
+        <SolidColorBrush x:Name="ClockDimBrush" Color="{ThemeResource SystemBaseMediumColor}"/>
+    </Page.Resources>
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="600"/>
@@ -23,13 +28,13 @@
         </Grid.ColumnDefinitions>
         
         <!--Map Column-->
-        <Maps:MapControl x:Name="MainMapControl"
+        <Maps:MapControl x:Name="MainMapControl"                               
                          TiltInteractionMode="Disabled"
                          PanInteractionMode="Disabled"
                          ZoomInteractionMode="Disabled"
                          RotateInteractionMode="Disabled"
                          TransitFeaturesVisible="False"
-                         ZoomLevel="16.11"
+                         ZoomLevel="16.09"
                          Width="600"/>
         
         <!--Control column-->
@@ -48,6 +53,9 @@
                       Grid.Row="1"                      
                       ItemsSource="{x:Bind SelectedStopDetails, Mode=OneWay}"
                       SelectionMode="None">
+                <ListView.ItemContainerTransitions>
+                    <TransitionCollection/>
+                </ListView.ItemContainerTransitions>
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -69,6 +77,7 @@
                             <!--First row-->
                             <TextBlock Grid.Column="0" 
                                        Text="{x:Bind BackingData.LineShortName}" 
+                                       Foreground="{StaticResource HslBusBlueBrush}"
                                        VerticalAlignment="Center" 
                                        FontWeight="Bold"/>
                             <TextBlock Grid.Column="1" 
@@ -104,10 +113,12 @@
             </ListView>
 
             <!--Footer-->
-            <TextBlock Grid.Row="2"
+            <TextBlock x:Name="ClockTextBlock" Grid.Row="2"
                        HorizontalAlignment="Left"
-                       VerticalAlignment="Center"
-                       Text="I am a clock"/>
+                       VerticalAlignment="Bottom"
+                       Style="{ThemeResource NavigationViewItemHeaderTextStyle}">                
+                    <Run x:Name="ClockHours"/><Run x:Name="ClockColon" Text=":"/><Run x:Name="ClockMinutesAndAmPm"/>
+            </TextBlock>
             <Button Grid.Row="2" 
                     FontFamily="{StaticResource SymbolThemeFontFamily}"
                     Content="&#xE115;"
@@ -116,12 +127,26 @@
                     HorizontalAlignment="Right">
                 <Button.Flyout>
                     <Flyout>
-                        <StackPanel Spacing="10">
+                        <StackPanel Spacing="10" MinWidth="175">
+                            <TextBlock Text="Settings" Style="{ThemeResource TitleTextBlockStyle}"/>
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <FontIcon FontFamily="Segoe MDL2 Assets"
+                                          Glyph="&#xE706;"/>
+                                <Slider x:Name="BrightnessSlider" 
+                                        Grid.Column="1"
+                                        Minimum="0" Maximum="255"
+                                        Value="255"
+                                        ValueChanged="BrightnessSlider_ValueChanged"/>
+                            </Grid>
                             <Button x:Name="RelayoutMapButton"
-                                     Click="RelayoutMapButton_Click"
-                                     Content="Relayout Map"/>
-                            <Button x:Name="GoToSettingsButton"
-                                    Content="Settings page"/>
+                                    Click="RelayoutMapButton_Click"
+                                    Content="Relayout Map"
+                                    HorizontalAlignment="Stretch"
+                                    Style="{ThemeResource AccentButtonStyle}"/>
                         </StackPanel>
                     </Flyout>
                 </Button.Flyout>

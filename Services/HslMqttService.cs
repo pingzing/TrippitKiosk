@@ -66,7 +66,7 @@ namespace TrippitKiosk.Services
 
             await _client.SubscribeAsync(topicFilters).ConfigureAwait(false);
             await _client.StartAsync(_options).ConfigureAwait(false);
-            _batchTimer.Change(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            _batchTimer.Change(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
         }
 
         private async Task MessageReceived(MqttApplicationMessageReceivedEventArgs arg)
