@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using TrippitKiosk.Models.ApiModels;
 
 
@@ -6,48 +7,44 @@ namespace TrippitKiosk.Models
 {
     public class TransitStopArrivalDeparture
     {
-        private const int SecondsPerDay = 86400;
-
         public string LineShortName { get; set; }
         public string LineLongName { get; set; }
-        public DateTime ScheduledArrival { get; set; }
-        public DateTime RealtimeArrival { get; set; }
-        public DateTime ScheduledDeparture { get; set; }
-        public DateTime RealtimeDeparture { get; set; }
+        public DateTimeOffset ScheduledArrival { get; set; }
+        public DateTimeOffset RealtimeArrival { get; set; }
+        public DateTimeOffset ScheduledDeparture { get; set; }
+        public DateTimeOffset RealtimeDeparture { get; set; }
         public int ArrivalDelaySeconds { get; set; }
         public int DepartureDelaySeconds { get; set; }
         public bool IsRealtime { get; set; }
-        public DateTime ServiceDay { get; set; }
         public string Headsign { get; set; }
 
         public TransitStopArrivalDeparture(ApiStoptime backingStoptime)
         {
             LineShortName = backingStoptime.Trip.Route.ShortName;
             LineLongName = backingStoptime.Trip.Route.LongName;
-            ScheduledArrival = HslTimeToDateTime(backingStoptime.ScheduledArrival.Value);
-            RealtimeArrival = HslTimeToDateTime(backingStoptime.RealtimeArrival.Value);
-            ScheduledDeparture = HslTimeToDateTime(backingStoptime.ScheduledDeparture.Value);
-            RealtimeDeparture = HslTimeToDateTime(backingStoptime.RealtimeDeparture.Value);
+            ScheduledArrival = HslTimeToDateTime(backingStoptime.ScheduledArrival.Value, backingStoptime.ServiceDay.Value);
+            RealtimeArrival = HslTimeToDateTime(backingStoptime.RealtimeArrival.Value, backingStoptime.ServiceDay.Value);
+            ScheduledDeparture = HslTimeToDateTime(backingStoptime.ScheduledDeparture.Value, backingStoptime.ServiceDay.Value);
+            RealtimeDeparture = HslTimeToDateTime(backingStoptime.RealtimeDeparture.Value, backingStoptime.ServiceDay.Value);
             ArrivalDelaySeconds = backingStoptime.ArrivalDelay.Value;
             IsRealtime = backingStoptime.Realtime.Value;
-
-            // Note: This will be subtly wrong if this device ever leaves Finland. ServiceDay is a Unix
-            // timestamp in LOCAL time. wtf
-            ServiceDay = DateTimeOffset.FromUnixTimeSeconds(backingStoptime.ServiceDay.Value).DateTime;
-
             Headsign = backingStoptime.Headsign;
         }
 
-        private DateTime HslTimeToDateTime(int hslTime)
+        private DateTimeOffset HslTimeToDateTime(int secondsSinceMidnight, long dayUnixSeconds)
         {
-            if (hslTime > SecondsPerDay)
-            {
-                return DateTime.Today.AddDays(-1).AddSeconds(hslTime);
-            }
-            else
-            {
-                return DateTime.Today.AddSeconds(hslTime);
-            }
+            // Day is given in Unix seconds, except in the Finland time zone, rather than UTC
+            // That means this date _should_ always be midnight, but will be either 2 or 3 hours shy.
+            // Add a day, then zero out the time component to account for this
+            // This works because the ServiceDay datetime is always at midnight.
+            var day = DateTimeOffset.FromUnixTimeSeconds(dayUnixSeconds).AddDays(1);
+            var dateTime = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0);
+            dateTime = dateTime.AddSeconds(secondsSinceMidnight);
+
+            var finlandTimeZone = TimeZoneInfo.FindSystemTimeZoneById("FLE Standard Time");
+            var offset = finlandTimeZone.GetUtcOffset(dateTime);
+
+            return new DateTimeOffset(dateTime, offset);
         }
     }
 }

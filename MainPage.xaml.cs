@@ -20,7 +20,9 @@ using TrippitKiosk.Services;
 using TrippitKiosk.Viewmodels;
 using Windows.Devices.Geolocation;
 using Windows.Foundation;
+using Windows.Networking.Connectivity;
 using Windows.Storage;
+using Windows.System;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -50,20 +52,38 @@ namespace TrippitKiosk
         private double _youAreHereLon;
         private List<TransitStop>? _visibleStops;
         private Dictionary<int, MapVehicleIcon> _vehicleIcons = new Dictionary<int, MapVehicleIcon>();
+        private TransitStop? _selectedStop = null;
+        private DispatcherTimer _clockTimer;
+        private DispatcherTimer _clockBlinkTimer;
+        private DispatcherTimer _networkUpdateTimer;
+        private DispatcherTimer _stopDetailsUpdateTimer;
+
+        private bool _isStopSelected = false;
+        public bool IsStopSelected
+        {
+            get => _isStopSelected;
+            set => Set(ref _isStopSelected, value);
+        }
 
         private string _selectedStopName;
         public string SelectedStopName
         {
             get => _selectedStopName;
-            set
-            {
-                if (_selectedStopName == value)
-                {
-                    return;
-                }
-                _selectedStopName = value;
-                RaisePropertyChanged();
-            }
+            set => Set(ref _selectedStopName, value);
+        }
+
+        private string _selectedStopCode;
+        public string SelectedStopCode
+        {
+            get => _selectedStopCode;
+            set => Set(ref _selectedStopCode, value);
+        }
+
+        private bool _detailsLoading;
+        public bool DetailsLoading
+        {
+            get => _detailsLoading;
+            set => Set(ref _detailsLoading, value);
         }
 
         public ObservableCollection<TransitStopArrivalDepartureVM> SelectedStopDetails { get; } = new ObservableCollection<TransitStopArrivalDepartureVM>();
@@ -93,8 +113,14 @@ namespace TrippitKiosk
             MainMapControl.MapElementPointerEntered += MainMapControl_MapElementPointerEntered;
             MainMapControl.MapElementPointerExited += MainMapControl_MapElementPointerExited;
             MainMapControl.Tapped += MainMapControl_Tapped;
+            MainMapControl.MapTapped += MainMapControl_MapTapped;
 
             StartClock();
+            StartNetworkUpdateTimer();
+            _stopDetailsUpdateTimer = new DispatcherTimer()
+            {
+                Interval = TimeSpan.FromMinutes(2)
+            };
         }
 
         private async void Page_Loaded(object sender, RoutedEventArgs e)
@@ -136,7 +162,6 @@ namespace TrippitKiosk
             await _displayService.Initialize();
         }
 
-
         private async void MainMapControl_MapElementClick(MapControl sender, MapElementClickEventArgs args)
         {
             foreach (var layer in sender.Layers)
@@ -151,29 +176,50 @@ namespace TrippitKiosk
                 }
             }
 
-            SelectedStopDetails.Clear();
-
-            // TODO: Show loading state for side panel
-
             MapElement? firstClicked = args.MapElements.First();
             firstClicked.ZIndex = ClickedZIndex;
             firstClicked.MapStyleSheetEntryState = "trippitKiosk.selectedUserElement";
-            var clickedStop = _visibleStops.FirstOrDefault(x => x.Id == (Guid)firstClicked.Tag);
-            if (clickedStop == null)
+            _selectedStop = _visibleStops.FirstOrDefault(x => x.Id == (Guid)firstClicked.Tag);
+
+            await UpdateStopDetails(_selectedStop);
+            _stopDetailsUpdateTimer.Stop();
+            _stopDetailsUpdateTimer.Tick -= StopDetailsUpdateTimer_Tick;
+            _stopDetailsUpdateTimer.Tick += StopDetailsUpdateTimer_Tick;
+            _stopDetailsUpdateTimer.Start();
+        }
+
+        private async void StopDetailsUpdateTimer_Tick(object sender, object e)
+        {
+            if (_selectedStop != null)
             {
+                await UpdateStopDetails(_selectedStop);
+            }
+        }
+
+        private async Task UpdateStopDetails(TransitStop selectedStop)
+        {
+            SelectedStopDetails.Clear();
+            DetailsLoading = true;
+
+            if (selectedStop == null)
+            {
+                DetailsLoading = false;
                 return;
             }
 
-            SelectedStopName = clickedStop.NameAndCode.ToUpperInvariant();
+            SelectedStopName = selectedStop.Name.ToUpperInvariant();
+            SelectedStopCode = selectedStop.Code.ToUpperInvariant();
 
-            var arrivalsAndDepartures = await _hslApiService.GetUpcomingStopArrivalsAndDepartures(clickedStop.GtfsId, CancellationToken.None);
+            var arrivalsAndDepartures = await _hslApiService.GetUpcomingStopArrivalsAndDepartures(selectedStop.GtfsId, CancellationToken.None);
             if (arrivalsAndDepartures == null)
             {
                 // TODO: Display error in side panel
+                DetailsLoading = false;
                 return;
             }
 
-            // TODO: Remove loading state here
+            DetailsLoading = false;
+
             foreach (var detailVM in arrivalsAndDepartures
                 .Select(x => new TransitStopArrivalDepartureVM(x))
                 .OrderBy(x => x.BackingData.RealtimeArrival))
@@ -201,6 +247,11 @@ namespace TrippitKiosk
 
         // Apparently interacting with the map doesn't get picked up by the XAML event handling system, so report it ourselves.
         private async void MainMapControl_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            await _idleService.ReportUserInteraction();
+        }
+
+        private async void MainMapControl_MapTapped(MapControl sender, MapInputEventArgs args)
         {
             await _idleService.ReportUserInteraction();
         }
@@ -234,6 +285,16 @@ namespace TrippitKiosk
                     }
                 }
             });
+        }
+
+        private void ShutdownFlyoutItem_Click(object sender, RoutedEventArgs e)
+        {
+            ShutdownManager.BeginShutdown(ShutdownKind.Shutdown, TimeSpan.FromMilliseconds(0));
+        }
+
+        private void RestartFlyoutItem_Click(object sender, RoutedEventArgs e)
+        {
+            ShutdownManager.BeginShutdown(ShutdownKind.Restart, TimeSpan.FromSeconds(0));
         }
 
         private async Task RefreshStops()
@@ -270,10 +331,6 @@ namespace TrippitKiosk
             };
 
             MainMapControl.Layers.Add(stopsLayer);
-
-            // Jiggle the map to force the text to appear
-            await MainMapControl.TryPanAsync(1, 1);
-            await MainMapControl.TryPanAsync(-1, -1);
 
             // Get the routes we're aware of, and subscribe to their vehicle via MQTT:
             var allStopDetails = await GetAllStopDetails(_visibleStops, CancellationToken.None);
@@ -332,7 +389,7 @@ namespace TrippitKiosk
 
         private void StopDetailsListView_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
         {
-            // Set a clone of an EntranceViewTransition
+            //Mimic the EntranceViewTransition, but every time the list updates
             if (!args.InRecycleQueue)
             {
                 var listViewItem = args.ItemContainer as ListViewItem;
@@ -364,8 +421,6 @@ namespace TrippitKiosk
             }
         }
 
-        private DispatcherTimer _clockTimer;
-        private DispatcherTimer _clockBlinkTimer;
         private void StartClock()
         {
             _clockTimer = new DispatcherTimer();
@@ -404,10 +459,64 @@ namespace TrippitKiosk
 
         }
 
+        private void StartNetworkUpdateTimer()
+        {
+            _networkUpdateTimer = new DispatcherTimer();
+            _networkUpdateTimer.Interval = TimeSpan.FromSeconds(5);
+            _networkUpdateTimer.Tick += (s, e) =>
+            {
+                var currentConnection = NetworkInformation.GetInternetConnectionProfile();
+                if (currentConnection == null)
+                {
+                    NetworkIcon.Glyph = NetworkInfo.EthernetIcon;
+                    NetworkName.Text = "Not connected";
+                    NetworkIpAddress.Text = "";
+                    return;
+                }
+
+                if (currentConnection.IsWlanConnectionProfile || currentConnection.IsWwanConnectionProfile)
+                {
+                    // WiFi
+                    var wifi = NetworkInfo.GetCurrentWifiNetwork();
+                    NetworkName.Text = wifi.WlanConnectionProfileDetails.GetConnectedSsid();
+                    byte? signalBars = wifi.GetSignalBars();
+                    NetworkIcon.Glyph = signalBars switch
+                    {
+                        4 => NetworkInfo.WifiFourBarsIcon,
+                        3 => NetworkInfo.WifiThreeBarsIcon,
+                        2 => NetworkInfo.WifiTwoBarsIcon,
+                        _ => NetworkInfo.WifiOneBarIcon,
+                    };
+                }
+                else
+                {
+                    // Ethernet
+                    NetworkName.Text = NetworkInfo.GetCurrentNetworkName();
+                    NetworkIcon.Glyph = NetworkInfo.EthernetIcon;
+                }
+
+                NetworkIpAddress.Text = NetworkInfo.GetCurrentIpv4Address();
+            };
+
+            _networkUpdateTimer.Start();
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
         private void RaisePropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private bool Set<T>(ref T backingStore, T value, [CallerMemberName] string propertyName = "")
+        {
+            if (EqualityComparer<T>.Default.Equals(backingStore, value))
+            {
+                return false;
+            }
+
+            backingStore = value;
+            RaisePropertyChanged(propertyName);
+            return true;
         }
     }
 }

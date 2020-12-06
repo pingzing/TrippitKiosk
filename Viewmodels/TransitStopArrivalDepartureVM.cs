@@ -40,6 +40,38 @@ namespace TrippitKiosk.Viewmodels
             }
         }
 
+        private string _statusText = "";
+        public string StatusText
+        {
+            get => _statusText;
+            set
+            {
+                if (_statusText == value)
+                {
+                    return;
+                }
+
+                _statusText = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private ScheduleState _scheduleState = ScheduleState.Normal;
+        public ScheduleState ScheduleState
+        {
+            get => _scheduleState;
+            set
+            {
+                if (_scheduleState == value)
+                {
+                    return;
+                }
+
+                _scheduleState = value;
+                RaisePropertyChanged();
+            }
+        }
+
         public string MinutesTillDepartureMessage => $"{MinutesTillDeparture} min.";
 
         private DispatcherTimer _updateMinutesTillTimer = new DispatcherTimer();
@@ -57,6 +89,17 @@ namespace TrippitKiosk.Viewmodels
             MinutesTillDeparture = minutesTillDeparture;
             _updateMinutesTillTimer.Interval = TimeSpan.FromSeconds(secondsTillNextMinute);
             _updateMinutesTillTimer.Start();
+
+            if (backingData.ArrivalDelaySeconds > 0)
+            {
+                ScheduleState = ScheduleState.Ahead;
+                StatusText = "Ahead of schedule";
+            }
+            if (backingData.ArrivalDelaySeconds < 0)
+            {
+                ScheduleState = ScheduleState.Delayed;
+                StatusText = "Delayed";
+            }
         }
 
         private void UpdateMinutesTillTimer_Tick(object sender, object e)
@@ -77,5 +120,12 @@ namespace TrippitKiosk.Viewmodels
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
+    }
+
+    public enum ScheduleState
+    {
+        Normal,
+        Ahead,
+        Delayed
     }
 }

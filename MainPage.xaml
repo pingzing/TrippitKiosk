@@ -10,6 +10,7 @@
     xmlns:Maps="using:Windows.UI.Xaml.Controls.Maps"    
     xmlns:local="using:TrippitKiosk"    
     xmlns:viewmodels="using:TrippitKiosk.Viewmodels"
+    xmlns:conv="using:TrippitKiosk.Converters"
     x:Class="TrippitKiosk.MainPage"
     
     
@@ -19,6 +20,7 @@
     <Page.Resources>
         <SolidColorBrush x:Name="ClockDefaultBrush" Color="{ThemeResource SystemBaseHighColor}"/>
         <SolidColorBrush x:Name="ClockDimBrush" Color="{ThemeResource SystemBaseMediumColor}"/>
+        <conv:ScheduleStateToForegroundConverter x:Key="ScheduleStateToForegroundConverter"/>
     </Page.Resources>
 
     <Grid>
@@ -37,9 +39,10 @@
                          ZoomLevel="16.09"
                          Width="600"/>
         
-        <!--Control column-->
+        <!--Details column-->
         <Grid Grid.Column="1" Padding="5">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
@@ -47,10 +50,17 @@
             <!--Header-->
             <TextBlock x:Name="StopDetailsTitle"
                        Text="{x:Bind SelectedStopName, Mode=OneWay}"
-                       Style="{ThemeResource TitleTextBlockStyle}"/>
+                       Style="{ThemeResource TitleTextBlockStyle}"
+                       FontSize="20"/>
+            <TextBlock x:Name="StopDetailsSubtitle"
+                       Grid.Row="1"
+                       Text="{x:Bind SelectedStopCode, Mode=OneWay}"
+                       Style="{ThemeResource SubtitleTextBlockStyle}"
+                       Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                       FontSize="15"/>
             <!--List-->
             <ListView x:Name="StopDetailsListView"
-                      Grid.Row="1"                      
+                      Grid.Row="2"                      
                       ItemsSource="{x:Bind SelectedStopDetails, Mode=OneWay}"
                       SelectionMode="None">
                 <ListView.ItemContainerTransitions>
@@ -90,19 +100,21 @@
                                        Grid.Row="0" 
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Right"
-                                       Text="{x:Bind BackingData.RealtimeArrival.ToShortTimeString()}"/>
+                                       Text="{x:Bind BackingData.RealtimeArrival.DateTime.ToShortTimeString()}"/>
 
                             <!--Second row-->
                             <TextBlock Grid.Column="0"   
                                        Grid.ColumnSpan="2"
-                                       Grid.Row="1" 
-                                       Text="Status"/>
+                                       Grid.Row="1"                                        
+                                       HorizontalAlignment="Right"
+                                       Foreground="{x:Bind ScheduleState, Converter={StaticResource ScheduleStateToForegroundConverter}}"
+                                       Text="{x:Bind StatusText, Mode=OneWay}"/>
                             <TextBlock Grid.Column="3"                                        
                                        Grid.Row="1"                                       
-                                       Text="{x:Bind MinutesTillDepartureMessage, Mode=OneWay}" 
-                                       VerticalAlignment="Center" 
+                                       Text="{x:Bind MinutesTillDepartureMessage, Mode=OneWay}"                                       
+                                       VerticalAlignment="Center"                                        
                                        HorizontalAlignment="Right"
-                                       FontSize="11" 
+                                       FontSize="12" 
                                        FontWeight="Bold" 
                                        Foreground="{ThemeResource SystemBaseMediumColor}"/>
 
@@ -112,45 +124,89 @@
                 </ListView.ItemTemplate>
             </ListView>
 
+            <ProgressRing x:Name="LoadingIndicator"
+                          Grid.Row="2"
+                          Height="50"
+                          Width="50"
+                          IsActive="{Binding DetailsLoading, Mode=OneWay}"/>
+
             <!--Footer-->
-            <TextBlock x:Name="ClockTextBlock" Grid.Row="2"
+            
+            <!--Clock-->
+            <TextBlock x:Name="ClockTextBlock" Grid.Row="3"
                        HorizontalAlignment="Left"
                        VerticalAlignment="Bottom"
                        Style="{ThemeResource NavigationViewItemHeaderTextStyle}">                
                     <Run x:Name="ClockHours"/><Run x:Name="ClockColon" Text=":"/><Run x:Name="ClockMinutesAndAmPm"/>
             </TextBlock>
-            <Button Grid.Row="2" 
-                    FontFamily="{StaticResource SymbolThemeFontFamily}"
-                    Content="&#xE115;"
-                    Padding="10, 5"
-                    Style="{ThemeResource AccentButtonStyle}"
-                    HorizontalAlignment="Right">
-                <Button.Flyout>
-                    <Flyout>
-                        <StackPanel Spacing="10" MinWidth="175">
-                            <TextBlock Text="Settings" Style="{ThemeResource TitleTextBlockStyle}"/>
-                            <Grid ColumnSpacing="10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <FontIcon FontFamily="Segoe MDL2 Assets"
-                                          Glyph="&#xE706;"/>
-                                <Slider x:Name="BrightnessSlider" 
-                                        Grid.Column="1"
-                                        Minimum="0" Maximum="255"
-                                        Value="255"
-                                        ValueChanged="BrightnessSlider_ValueChanged"/>
-                            </Grid>
-                            <Button x:Name="RelayoutMapButton"
-                                    Click="RelayoutMapButton_Click"
-                                    Content="Relayout Map"
-                                    HorizontalAlignment="Stretch"
-                                    Style="{ThemeResource AccentButtonStyle}"/>
-                        </StackPanel>
-                    </Flyout>
-                </Button.Flyout>
-            </Button>
+                        
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="5">
+                
+                <!--Shutdown button-->
+                <Button x:Name="ShutdownButton"
+                        FontFamily="{StaticResource SymbolThemeFontFamily}"
+                        Content="&#xE7E8;"
+                        Padding="10, 10"
+                        HorizontalAlignment="Right">
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Click="ShutdownFlyoutItem_Click"
+                                            Text="Shutdown"/>
+                            <MenuFlyoutItem Click="RestartFlyoutItem_Click"
+                                            Text="Restart"/>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+                
+                <!--Settings button-->
+                <Button FontFamily="{StaticResource SymbolThemeFontFamily}"
+                        Content="&#xE115;"
+                        Padding="10, 10"
+                        Style="{ThemeResource AccentButtonStyle}"
+                        HorizontalAlignment="Right">
+                    <Button.Flyout>
+                        <Flyout>
+                            <StackPanel Spacing="10" MinWidth="175">
+                                <TextBlock Text="Settings" Style="{ThemeResource TitleTextBlockStyle}"/>
+                                
+                                <!--Network info-->
+                                <Grid ColumnSpacing="10">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon x:Name="NetworkIcon" Grid.RowSpan="2" FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                  Glyph=""/>
+                                    <TextBlock x:Name="NetworkName" Grid.Row="0" Grid.Column="1" />
+                                    <TextBlock x:Name="NetworkIpAddress" Grid.Row="1" Grid.Column="1" Style="{StaticResource CaptionTextBlockStyle}"/>
+                                </Grid>
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon FontFamily="Segoe MDL2 Assets"
+                                              Glyph="&#xE706;"/>
+                                    <Slider x:Name="BrightnessSlider" 
+                                            Grid.Column="1"
+                                            Minimum="0" Maximum="255"
+                                            Value="255"
+                                            ValueChanged="BrightnessSlider_ValueChanged"/>
+                                </Grid>
+                                <Button x:Name="RelayoutMapButton"
+                                        Click="RelayoutMapButton_Click"
+                                        Content="Relayout Map"
+                                        HorizontalAlignment="Stretch"
+                                        Style="{ThemeResource AccentButtonStyle}"/>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
 
         </Grid>
 
