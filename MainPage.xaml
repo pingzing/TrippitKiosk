@@ -38,6 +38,14 @@
                          TransitFeaturesVisible="False"
                          ZoomLevel="16.09"
                          Width="600"/>
+
+        <Border Background="{ThemeResource SystemControlAccentDark1AcrylicElementAccentDark1Brush}"
+                HorizontalAlignment="Left" VerticalAlignment="Bottom">
+            <TextBlock Padding="5">
+                <Run Text="Tracking: "/>
+                <Run Text="{x:Bind TrackingCount, Mode=OneWay}"/>
+            </TextBlock>
+        </Border>
         
         <!--Details column-->
         <Grid Grid.Column="1" Padding="5">

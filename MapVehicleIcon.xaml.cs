@@ -6,6 +6,8 @@ namespace TrippitKiosk
 {
     public sealed partial class MapVehicleIcon : UserControl
     {
+        public DateTimeOffset LastUpdated { get; set; }
+
         public static readonly DependencyProperty RotationDegreesProperty =
             DependencyProperty.Register(
                 nameof(RotationDegrees),

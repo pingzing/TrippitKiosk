@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.UI.Core;
@@ -66,6 +67,7 @@ namespace TrippitKiosk.Services
 
         private async Task ResetIdleTimer()
         {
+            Debug.WriteLine("Resetting the idle timer.");
             await Task.Run(() =>
             {
                 if (IsIdle)
@@ -81,6 +83,7 @@ namespace TrippitKiosk.Services
 
         private void UserIdle(object _)
         {
+            Debug.WriteLine("User went idle.");
             IsIdle = true;
             UserIdleChanged?.Invoke(this, true);
         }

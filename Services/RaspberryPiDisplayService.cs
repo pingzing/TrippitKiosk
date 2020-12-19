@@ -124,6 +124,7 @@ namespace TrippitKiosk.Services
             // If the user goes idle, save their brightness, then dim to 0.
             if (isUserIdle)
             {
+                Debug.WriteLine("User went idle. Dimming the screen.");
                 int readAttempts = 0;
                 while ((_preIdleBrightness = await GetBrightness()) == null)
                 {
@@ -138,7 +139,7 @@ namespace TrippitKiosk.Services
                 }
 
                 Debug.WriteLine("User is idle, setting brightness to 0.");
-                await AdjustBrightness(0);
+                await AdjustBrightness(10);
             }
             else
             {

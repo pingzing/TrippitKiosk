@@ -51,7 +51,9 @@ namespace TrippitKiosk
         private double _youAreHereLat;
         private double _youAreHereLon;
         private List<TransitStop>? _visibleStops;
+
         private Dictionary<int, MapVehicleIcon> _vehicleIcons = new Dictionary<int, MapVehicleIcon>();
+
         private TransitStop? _selectedStop = null;
         private DispatcherTimer _clockTimer;
         private DispatcherTimer _clockBlinkTimer;
@@ -84,6 +86,13 @@ namespace TrippitKiosk
         {
             get => _detailsLoading;
             set => Set(ref _detailsLoading, value);
+        }
+
+        private int _trackingCount = 0;
+        public int TrackingCount
+        {
+            get => _trackingCount;
+            set => Set(ref _trackingCount, value);
         }
 
         public ObservableCollection<TransitStopArrivalDepartureVM> SelectedStopDetails { get; } = new ObservableCollection<TransitStopArrivalDepartureVM>();
@@ -268,7 +277,13 @@ namespace TrippitKiosk
                         {
                             icon.RotationDegrees = newPos.HeadingDegrees.Value;
                         }
+                        if (newPos.FriendlyRouteNumber != icon.RouteText)
+                        {
+                            icon.RouteText = newPos.FriendlyRouteNumber;
+                        }
+                        icon.LastUpdated = DateTimeOffset.UtcNow;
                         MapControl.SetLocation(icon, new Geopoint(BasicGeopositionExtensions.Create(0, newPos.Latitude.Value, newPos.Longitude.Value)));
+                        MainMapControl.InvalidateArrange();
                     }
                     else
                     {
@@ -278,12 +293,32 @@ namespace TrippitKiosk
                         {
                             newIcon.Rotation = newPos.HeadingDegrees.Value;
                         }
+                        newIcon.LastUpdated = DateTimeOffset.UtcNow;
                         _vehicleIcons.Add(newPos.VehicleNumber, newIcon);
                         MainMapControl.Children.Add(newIcon);
                         MapControl.SetLocation(newIcon, new Geopoint(BasicGeopositionExtensions.Create(0, newPos.Latitude.Value, newPos.Longitude.Value)));
                         MapControl.SetNormalizedAnchorPoint(newIcon, new Point(0.5, 0.5));
                     }
                 }
+
+                // Remove stale icons
+                var now = DateTimeOffset.UtcNow;
+                var fiveMinutes = TimeSpan.FromMinutes(5);
+                var toRemove = new List<int>();
+                foreach (var kv in _vehicleIcons)
+                {
+                    if (now - kv.Value.LastUpdated >= fiveMinutes)
+                    {
+                        toRemove.Add(kv.Key);
+                    }
+                }
+
+                foreach (int key in toRemove)
+                {
+                    _vehicleIcons.Remove(key);
+                }
+
+                TrackingCount = _vehicleIcons.Count;
             });
         }
 
