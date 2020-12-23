@@ -309,7 +309,9 @@ namespace TrippitKiosk
                 {
                     if (now - kv.Value.LastUpdated >= fiveMinutes)
                     {
+                        // Mark it for removal from the dict, and take it off the map
                         toRemove.Add(kv.Key);
+                        MainMapControl.Children.Remove(kv.Value);
                     }
                 }
 
