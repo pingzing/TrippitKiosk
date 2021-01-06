@@ -21,7 +21,6 @@ namespace TrippitKiosk.Services
         private readonly ManagedMqttClientOptions _options;
         private readonly IManagedMqttClient _client;
 
-        private object _dictLock = new object();
         private Timer _batchTimer = null;
         private ConcurrentDictionary<int, VehiclePosition> _batchedPositions = new ConcurrentDictionary<int, VehiclePosition>();
 
@@ -87,7 +86,7 @@ namespace TrippitKiosk.Services
                 return;
             }
 
-            // Do some kind of batching here, so we only send out an event every few seconds to the UI.
+            // Build up a batch of updates that only get dispatched occasionally by the timer, so we're not drowning the UI thread in updates
             _batchedPositions.AddOrUpdate(position.VehiclePosition.VehicleNumber, position.VehiclePosition,
                 (vehicleNum, newPos) => newPos);
         }
@@ -95,15 +94,13 @@ namespace TrippitKiosk.Services
         private void BatchTimerTick(object state)
         {
             List<VehiclePosition> _batchToSend = null;
-            lock (_dictLock)
+
+            _batchToSend = new List<VehiclePosition>();
+            foreach (var pair in _batchedPositions)
             {
-                _batchToSend = new List<VehiclePosition>();
-                foreach (var pair in _batchedPositions)
+                if (_batchedPositions.TryRemove(pair.Key, out VehiclePosition pos))
                 {
-                    if (_batchedPositions.TryRemove(pair.Key, out VehiclePosition pos))
-                    {
-                        _batchToSend.Add(pos);
-                    }
+                    _batchToSend.Add(pos);
                 }
             }
 
